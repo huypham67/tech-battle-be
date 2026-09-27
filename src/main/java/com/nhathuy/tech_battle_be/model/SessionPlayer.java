@@ -57,6 +57,13 @@ public class SessionPlayer extends BaseEntity {
     @Builder.Default
     private Integer unansweredCount = 0;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    @Builder.Default
+    private boolean ready = false;
+
+    @Column(name = "ready_at")
+    private Instant readyAt;
+
     @Column(name = "final_rank")
     private Integer finalRank;
 

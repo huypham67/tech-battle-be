@@ -50,7 +50,8 @@ public class SecurityConfig {
             "/auth/register",
             "/auth/login",
             "/auth/refresh",
-            "/topics/**"
+            "/topics/**",
+            "/ws/**"
     };
 
     @Bean

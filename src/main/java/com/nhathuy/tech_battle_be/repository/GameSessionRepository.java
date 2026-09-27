@@ -9,4 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface GameSessionRepository extends JpaRepository<GameSession, UUID> {
 
     Optional<GameSession> findByIdAndCreatedBy_IdAndMode(UUID id, UUID userId, SessionMode mode);
+
+    Optional<GameSession> findBySessionCodeAndMode(String sessionCode, SessionMode mode);
 }

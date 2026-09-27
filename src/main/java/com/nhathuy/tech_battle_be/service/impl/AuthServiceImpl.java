@@ -59,11 +59,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public TokenResponse login(LoginRequest request) {
-        Authentication authentication = new UsernamePasswordAuthenticationToken(request.email(), request.password());
-        authenticationManager.authenticate(authentication);
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
+        User user = (User) authentication.getPrincipal();
 
         log.info("User login succeeded: userId={}, email={}", user.getId(), user.getEmail());
         return tokenService.issueTokens(user);

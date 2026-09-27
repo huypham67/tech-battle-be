@@ -1,6 +1,6 @@
-package com.nhathuy.tech_battle_be.service;
+package com.nhathuy.tech_battle_be.messaging.pub;
 
-import com.nhathuy.tech_battle_be.dto.response.BattleRoomEvent;
+import com.nhathuy.tech_battle_be.event.BattleRoomEvent;
 import com.nhathuy.tech_battle_be.dto.response.BattleRoomResponse;
 import java.time.Instant;
 import java.util.UUID;

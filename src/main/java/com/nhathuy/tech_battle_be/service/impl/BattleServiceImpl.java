@@ -1,5 +1,6 @@
 package com.nhathuy.tech_battle_be.service.impl;
 
+import com.nhathuy.tech_battle_be.common.constants.BattleRoomEventTypes;
 import com.nhathuy.tech_battle_be.common.enums.PlayerRole;
 import com.nhathuy.tech_battle_be.common.enums.QuestionStatus;
 import com.nhathuy.tech_battle_be.common.enums.SessionMode;
@@ -13,6 +14,7 @@ import com.nhathuy.tech_battle_be.dto.response.BattlePlayerResponse;
 import com.nhathuy.tech_battle_be.dto.response.BattleRoomResponse;
 import com.nhathuy.tech_battle_be.exception.AppException;
 import com.nhathuy.tech_battle_be.exception.ErrorCode;
+import com.nhathuy.tech_battle_be.messaging.pub.BattleRoomEventPublisher;
 import com.nhathuy.tech_battle_be.model.GameSession;
 import com.nhathuy.tech_battle_be.model.Question;
 import com.nhathuy.tech_battle_be.model.SessionPlayer;
@@ -25,7 +27,6 @@ import com.nhathuy.tech_battle_be.repository.SessionPlayerRepository;
 import com.nhathuy.tech_battle_be.repository.SessionQuestionRepository;
 import com.nhathuy.tech_battle_be.repository.TopicRepository;
 import com.nhathuy.tech_battle_be.repository.UserRepository;
-import com.nhathuy.tech_battle_be.service.BattleRoomEventPublisher;
 import com.nhathuy.tech_battle_be.service.BattleService;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -90,7 +91,7 @@ public class BattleServiceImpl implements BattleService {
                 .build());
 
         BattleRoomResponse response = toResponse(session);
-        battleRoomEventPublisher.publish("ROOM_CREATED", response, user.getId());
+        battleRoomEventPublisher.publish(BattleRoomEventTypes.ROOM_CREATED, response, user.getId());
         return response;
     }
 
@@ -135,7 +136,7 @@ public class BattleServiceImpl implements BattleService {
 
         BattleRoomResponse response = toResponse(session);
         if (joined) {
-            battleRoomEventPublisher.publish("PLAYER_JOINED", response, user.getId());
+            battleRoomEventPublisher.publish(BattleRoomEventTypes.PLAYER_JOINED, response, user.getId());
         }
         return response;
     }
@@ -144,14 +145,14 @@ public class BattleServiceImpl implements BattleService {
     @Transactional
     public BattleRoomResponse setReady(UUID sessionId, SetBattleReadyRequest request) {
         GameSession session = findBattleRoom(sessionId);
-        assertWaiting(session);
+        checkSessionIsWaiting(session);
         SessionPlayer player = findCurrentPlayer(session.getId());
         player.setReady(request.ready());
         player.setReadyAt(request.ready() ? Instant.now() : null);
         sessionPlayerRepository.save(player);
         BattleRoomResponse response = toResponse(session);
         battleRoomEventPublisher.publish(
-            request.ready() ? "PLAYER_READY" : "PLAYER_UNREADY",
+            request.ready() ? BattleRoomEventTypes.PLAYER_READY : BattleRoomEventTypes.PLAYER_UNREADY,
             response,
             player.getUser().getId()
         );
@@ -162,7 +163,7 @@ public class BattleServiceImpl implements BattleService {
     @Transactional
     public void leaveRoom(UUID sessionId) {
         GameSession session = findBattleRoom(sessionId);
-        assertWaiting(session);
+        checkSessionIsWaiting(session);
         SessionPlayer player = findCurrentPlayer(session.getId());
         if (player.getRole() == PlayerRole.HOST) {
             throw new AppException(ErrorCode.BATTLE_HOST_CANNOT_LEAVE);
@@ -170,16 +171,16 @@ public class BattleServiceImpl implements BattleService {
         UUID actorUserId = player.getUser().getId();
         sessionPlayerRepository.delete(player);
         sessionPlayerRepository.flush();
-        battleRoomEventPublisher.publish("PLAYER_LEFT", toResponse(session), actorUserId);
+        battleRoomEventPublisher.publish(BattleRoomEventTypes.PLAYER_LEFT, toResponse(session), actorUserId);
     }
 
     @Override
     @Transactional
     public BattleRoomResponse startRoom(UUID sessionId) {
         GameSession session = findBattleRoom(sessionId);
-        assertWaiting(session);
+        checkSessionIsWaiting(session);
         SessionPlayer currentPlayer = findCurrentPlayer(session.getId());
-        assertHost(currentPlayer);
+        checkIsHost(currentPlayer);
 
         List<SessionPlayer> players = sessionPlayerRepository
                 .findAllBySession_IdOrderByJoinedAtAsc(session.getId());
@@ -194,7 +195,7 @@ public class BattleServiceImpl implements BattleService {
         session.setStartedAt(Instant.now());
         gameSessionRepository.save(session);
         BattleRoomResponse response = toResponse(session);
-        battleRoomEventPublisher.publish("BATTLE_STARTED", response, currentPlayer.getUser().getId());
+        battleRoomEventPublisher.publish(BattleRoomEventTypes.BATTLE_STARTED, response, currentPlayer.getUser().getId());
         return response;
     }
 
@@ -202,15 +203,15 @@ public class BattleServiceImpl implements BattleService {
     @Transactional
     public BattleRoomResponse cancelRoom(UUID sessionId) {
         GameSession session = findBattleRoom(sessionId);
-        assertWaiting(session);
+        checkSessionIsWaiting(session);
         SessionPlayer currentPlayer = findCurrentPlayer(session.getId());
-        assertHost(currentPlayer);
+        checkIsHost(currentPlayer);
 
         session.setStatus(SessionStatus.CANCELLED);
         session.setFinishedAt(Instant.now());
         gameSessionRepository.save(session);
         BattleRoomResponse response = toResponse(session);
-        battleRoomEventPublisher.publish("ROOM_CANCELLED", response, currentPlayer.getUser().getId());
+        battleRoomEventPublisher.publish(BattleRoomEventTypes.ROOM_CANCELLED, response, currentPlayer.getUser().getId());
         return response;
     }
 
@@ -258,13 +259,13 @@ public class BattleServiceImpl implements BattleService {
                 .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_FOUND));
     }
 
-    private void assertWaiting(GameSession session) {
+    private void checkSessionIsWaiting(GameSession session) {
         if (session.getStatus() != SessionStatus.WAITING) {
             throw new AppException(ErrorCode.BATTLE_ROOM_NOT_WAITING);
         }
     }
 
-    private void assertHost(SessionPlayer player) {
+    private void checkIsHost(SessionPlayer player) {
         if (player.getRole() != PlayerRole.HOST) {
             throw new AppException(ErrorCode.FORBIDDEN);
         }

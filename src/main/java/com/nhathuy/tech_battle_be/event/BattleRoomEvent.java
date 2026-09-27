@@ -1,5 +1,6 @@
-package com.nhathuy.tech_battle_be.dto.response;
+package com.nhathuy.tech_battle_be.event;
 
+import com.nhathuy.tech_battle_be.dto.response.BattleRoomResponse;
 import lombok.Builder;
 
 import java.time.Instant;

@@ -37,8 +37,8 @@ public class Topic extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "icon_url", length = 500)
-    private String iconUrl;
+    @Column(name = "icon_key", length = 50)
+    private String iconKey;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

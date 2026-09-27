@@ -10,7 +10,7 @@ public record TopicResponse(
         String name,
         String slug,
         String description,
-        String iconUrl,
+        String iconKey,
         TopicStatus status,
         UUID parentId
 ) {
